@@ -252,8 +252,9 @@ async function callAPI(messages) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages })
   });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Errore API ' + res.status); }
   const d = await res.json();
+  if (!res.ok || d.error) { throw new Error(d.error?.message || 'Errore API ' + res.status); }
+  if (!d.content || !Array.isArray(d.content)) { throw new Error('Risposta non valida dal server: ' + JSON.stringify(d)); }
   return d.content.filter(c => c.type === 'text').map(c => c.text).join('');
 }
 
