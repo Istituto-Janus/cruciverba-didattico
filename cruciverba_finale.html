@@ -163,7 +163,8 @@
       <h2 id="cw-title">Cruciverba</h2>
       <div class="btn-group">
         <button class="btn" onclick="resetGrid()">↺ Reset</button>
-        <button class="btn dark" onclick="exportStudent()">⬇ Scarica HTML studente</button>
+        <button class="btn dark" onclick="exportStudent()">⬇ Scarica HTML</button>
+        <button class="btn" onclick="pubblicaCruciverba()" id="btn-pubblica">🌐 Pubblica per studenti</button>
       </div>
     </div>
 
@@ -197,6 +198,14 @@
       <p>Scarica il file HTML, caricalo su GitHub Pages e incolla il link su Moodle. Lo studente clicca e gioca direttamente nel browser — nessuna installazione, nessun login.</p>
       <div class="btn-group">
         <button class="btn dark" onclick="exportStudent()">⬇ Scarica HTML</button>
+        <button class="btn" onclick="pubblicaCruciverba()" id="btn-pubblica2">🌐 Pubblica per studenti</button>
+      </div>
+      <div id="link-pubblicato" style="display:none;margin-top:12px;padding:12px;background:#f0faf5;border:1px solid #1a7a4a;border-radius:8px;">
+        <p style="font-size:13px;color:#1a7a4a;margin-bottom:6px;font-weight:500;">✅ Cruciverba pubblicato! Copia il link per Moodle:</p>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="link-output" readonly style="flex:1;padding:8px;font-size:13px;border:1px solid #ccc;border-radius:6px;background:#fff;" />
+          <button class="btn" onclick="copiaLink()" style="white-space:nowrap;">📋 Copia</button>
+        </div>
       </div>
     </div>
   </div>
@@ -204,6 +213,9 @@
 </div>
 
 <script>
+const SUPABASE_URL = 'https://witakmuimujwymxihxeu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpdGFrbXVpbXVqd3lteGloeGV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTg3ODAsImV4cCI6MjA5NTI3NDc4MH0.00uHdEAf1lbcSzv2yMMR3v6dtJvtXRqSgTSMZYLIZcY';
+const PLAYER_URL = 'https://istituto-janus.github.io/cruciverba-didattico/player.html';
 const API_KEY = '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';
 let currentCW = null;
 let pdfBase64 = null;
@@ -621,6 +633,59 @@ function rst(){document.querySelectorAll('#grid input').forEach(i=>{i.value='';i
   a.download = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_cruciverba.html';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function pubblicaCruciverba() {
+  if (!currentCW) return;
+  const btn = document.getElementById('btn-pubblica');
+  const btn2 = document.getElementById('btn-pubblica2');
+  if (btn) btn.textContent = '⏳ Pubblicazione...';
+  if (btn2) btn2.textContent = '⏳ Pubblicazione...';
+
+  try {
+    const dati = JSON.stringify({
+      grid: currentCW.cw.grid,
+      rows: currentCW.cw.rows,
+      cols: currentCW.cw.cols,
+      placed: currentCW.cw.placed,
+      numbered: currentCW.cw.numbered
+    });
+
+    const res = await fetch(SUPABASE_URL + '/rest/v1/cruciverba', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ titolo: currentCW.title, dati: dati })
+    });
+
+    if (!res.ok) throw new Error('Errore salvataggio: ' + res.status);
+    const data = await res.json();
+    const id = data[0].id;
+    const link = PLAYER_URL + '?id=' + id;
+
+    document.getElementById('link-pubblicato').style.display = 'block';
+    document.getElementById('link-output').value = link;
+    if (btn) btn.textContent = '✅ Pubblicato';
+    if (btn2) btn2.textContent = '✅ Pubblicato';
+  } catch(e) {
+    if (btn) btn.textContent = '🌐 Pubblica per studenti';
+    if (btn2) btn2.textContent = '🌐 Pubblica per studenti';
+    showError('Errore pubblicazione: ' + e.message);
+  }
+}
+
+function copiaLink() {
+  const inp = document.getElementById('link-output');
+  inp.select();
+  navigator.clipboard.writeText(inp.value).then(() => {
+    const btn = inp.nextElementSibling;
+    btn.textContent = '✅ Copiato!';
+    setTimeout(() => btn.textContent = '📋 Copia', 2000);
+  });
 }
 </script>
 </body>
